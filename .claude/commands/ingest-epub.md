@@ -288,6 +288,6 @@ Failed chapters: <list> (if any)
 | Source shape | Tool | Slash command |
 |---|---|---|
 | Substack URL | `scripts/fetch_substack.py` | `/ingest-url` |
-| `.pdf` file | `pdf2md` (planned at `scripts/pdf2md/`) | `/ingest-inbox`, `/ingest-url` |
+| `.pdf` file | `scripts/pdf2md/` (vendored package) | `/ingest-pdf`, `/ingest-inbox`, `/ingest-url` |
 | **`.epub` file** | **`scripts/epub2md/` (this command)** | **`/ingest-epub`** |
 | Other web article | `defuddle` (`npx defuddle`) | `/ingest-url` |

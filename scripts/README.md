@@ -9,7 +9,7 @@ projects evolve in incompatible directions.
 | Source shape | Tool | Slash command |
 |---|---|---|
 | Substack URL | `scripts/fetch_substack.py` (PEP 723 self-installing) | `/ingest-url` |
-| `.pdf` file | `scripts/pdf2md/` (vendored package) | `/ingest-inbox`, `/ingest-url` |
+| `.pdf` file | `scripts/pdf2md/` (vendored package) | `/ingest-pdf`, `/ingest-inbox`, `/ingest-url` |
 | `.epub` file | `scripts/epub2md/` (vendored package) | `/ingest-epub` |
 | Other web article | `defuddle` (Node.js, `npm install -g defuddle`) | `/ingest-url` |
 
@@ -32,7 +32,8 @@ PDF ingestion via the `pdf2md` console script. Vendored from a local
 at commit `f50b9ed`. See `scripts/pdf2md/README.md` for the upstream
 pin, one-time `uv venv` bootstrap, and CLI usage.
 
-`/ingest-inbox` and `/ingest-url` invoke this for any `.pdf` input. Do
+`/ingest-pdf` (local files), `/ingest-inbox` (inbox drops), and
+`/ingest-url` (PDFs at a URL) all invoke this for any `.pdf` input. Do
 not call `Read` on a `.pdf` directly — see the speed-up note in
 `.claude/commands/ingest-inbox.md`.
 

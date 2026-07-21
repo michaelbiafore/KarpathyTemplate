@@ -151,6 +151,7 @@ See `sources/books/README.md` and `sources/youtube/README.md` for recommended fo
 |---------|-------|--------------|
 | `/ingest-url` | `/ingest-url <url>` | Fetches an article and runs full ingest. Routes by URL shape: Substack URLs → `scripts/fetch_substack.py` (Playwright + cookies, downloads figures); `.pdf` URLs → vendored `pdf2md`; other web → defuddle. |
 | `/ingest-inbox` | `/ingest-inbox` | Processes all `.md` files in `inbox/`. For PDFs, calls vendored `pdf2md` first; for `.epub`, redirects the user to `/ingest-epub`. |
+| `/ingest-pdf` | `/ingest-pdf <path-to.pdf>` | Converts a local PDF (paper, report, slide deck) to markdown via vendored `pdf2md`, then runs the full ingest. Clean entry point for PDF files on disk (not URLs or inbox drops). |
 | `/ingest-epub` | `/ingest-epub <path-to.epub>` | Extracts EPUB chapters + images into `sources/books/<slug>/`, summarizes content chapters via Agent subagents, synthesizes per-chapter and book-overview wiki pages. |
 | `/maintain-wiki` | `/maintain-wiki` | Health-checks the wiki for broken links, orphans, gaps, contradictions. |
 
