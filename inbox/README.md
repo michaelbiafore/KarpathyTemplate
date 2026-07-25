@@ -1,11 +1,7 @@
-# Inbox
+# inbox/
 
-Quick capture folder for fleeting thoughts, ideas, quotes, and notes you don't want to categorize yet.
+Quick-capture zone for fleeting thoughts, clipped articles, PDFs, and notes.
 
-## How to Use
+Drop anything here, then run `/ingest-inbox` — Claude classifies each item, integrates it into the wiki, and moves the original into `inbox/processed/`. Inbox-local figures go in `inbox/images/`.
 
-1. Create a new `.md` file here with whatever's on your mind
-2. Don't worry about formatting, tags, or categories — just capture the thought
-3. Run `/ingest-inbox` in Claude Code to classify and integrate everything into the wiki
-
-Claude will read each note, determine where it belongs, create or update wiki pages, and move processed notes to `inbox/processed/`.
+This folder is a local capture zone (gitignored in normal use); it starts empty apart from this README.

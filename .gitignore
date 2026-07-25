@@ -1,0 +1,38 @@
+# === Local-only capture zones (per CLAUDE.md) ===
+# inbox/ and Clippings/ are local capture zones. We keep the inbox scaffold
+# (README + images/.gitkeep) tracked so a fresh clone has the folder, but
+# ignore everything dropped into it.
+inbox/*
+!inbox/README.md
+!inbox/images/
+inbox/images/*
+!inbox/images/.gitkeep
+inbox/processed/
+Clippings/
+
+# === Personal secrets / per-machine config ===
+cookies_substack.json
+.claude/settings.local.json
+
+# === Vendored package virtualenvs (machine-specific — bootstrap per machine) ===
+# These are recreated by `uv venv && uv pip install -e .` (see SETUP.md).
+# They contain platform-specific binaries and absolute paths; never commit them.
+scripts/epub2md/.venv/
+scripts/pdf2md/.venv/
+.venv/
+
+# === Python bytecode / build artifacts ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# === OS / editor cruft ===
+.DS_Store
+Thumbs.db
+
+# === Obsidian per-machine state ===
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/graph.json

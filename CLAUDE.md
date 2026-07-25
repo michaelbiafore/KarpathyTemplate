@@ -53,15 +53,12 @@ These are the starter categories. If they don't match your interests, ask Claude
 | GitLab | `gitlab/`| Migrate repos and proficiency from GitHub. GitForPMs presentation. |
 | Skills | `skills/` | Small-edge skills like "energy correlation", signature-based methods like "Levy Area" correlation, changepoint detection, conformal prediction, topological data analysis (TDA) definition of market regimes, sheaf-over-network based definitions of data inconsistency (data fusion),  |
 | System Engineering | `sys/`| Architectural principles including STPA (System Theoretic Process Analysis) for proactively blocking bad system states |
-| ELSA | `elsa/` | Equity Long/Short AI  |
-| Ken | `nakayama/` | Ken Nakayama projects, Legal RAG|
-| Lodge | `lodge/` | Self-sufficiency and Amish 2.0 |
 | AlgoTrading | `algotrade/` | Stefan Jansen, Jason Strimpel and Matt Dancho |
 | PolyEcon | `polyecon/` | Politics and Economics of AI, including skill atrophy, job loss  |
 | Data | `data/` | Data sources and flows |
 | Agentic Software Engineering | `aisoft`| Best practices for AI software engineering, after Kieran Klaassen (Every), Andre Karpathy, Boris Cherny, John Kim (Meta), IndyDevDan (Dan Shipper, Every), David Ondrej and Nate B Jones and Len Bass and SuperLinear Academy guys: Yan Wang https://github.com/grapeot and Yuzheng Sun https://maven.com/superlinear/aibuilders |
 | Evals | `evals/` | General problem of finding a small number of end-to-end tests and a (possibly multi-dim) metric(s) such that a "pass" on the suite of eval e-t0-e tests gives high confidence the entire agentic system can be trusted in business-critical production uses |
-| VRUI | `vrui/` | Thesis that a VR user-interface will generally be needed in order of a human operator to manage (direct, validate out from) agentic systems |
+
 
 
 

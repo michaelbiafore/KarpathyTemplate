@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-date: 2026-04-29
+date: 2026-07-24
 tags:
   - meta/index
 ---
@@ -13,55 +13,47 @@ Categories below mirror CLAUDE.md's Categories table. Add new pages under the se
 
 See also: [[log|Change Log]]
 
-## STPA — System Theoretic Process Analysis
+## Agent Runtime — `runtime/`
 
-_Levenson's STPA and related hierarchical-control approaches to safety analysis (ex-post accident causation, ex-ante system architecture)._
+_Governed space in which agentic workflows run._
 
 <!-- Add entries as: - [[filename|Display Text]] — one-line hook -->
 
-## HITL — Human in the Loop
+## Agentic Cybersecurity — `cyber/`
 
-_Man-machine collaboration in decision processes, "centaurs," and agents as research collaborators._
+_Attack surfaces and patterns for agentic systems._
 
-## Red Teams
+## GitLab — `gitlab/`
 
-_Cybersecurity evaluation aided by agentic red teams._
+_Migrate repos and proficiency from GitHub. GitForPMs presentation._
 
-## Ontology
+## Skills — `skills/`
 
-_Domain formalizations: RDFS, OWL, OWL 2, BFO, entity/relation modeling._
+_Small-edge quant skills: energy correlation, Lévy-area / signature methods, changepoint detection, conformal prediction, TDA market regimes, sheaf-based data fusion._
 
-## Management
+## System Engineering — `sys/`
 
-_Architecting agentic systems by managing agents as "digital employees" with their own quirks and psychology._
+_Architectural principles including STPA (System-Theoretic Process Analysis) for proactively blocking bad system states._
 
-## Hardware
+## AlgoTrading — `algotrade/`
 
-_GPUs, NVIDIA, ASICs, FPGAs, quantum computers._
+_Stefan Jansen, Jason Strimpel, Matt Dancho._
 
-## Jobs
+## PolyEcon — `polyecon/`
 
-_Productivity gains, job loss, and the economic / political / social impact of agentic systems._
+_Politics and economics of AI, including skill atrophy and job loss._
 
-## Robots
+## Data — `data/`
 
-_Physical instantiations of agents — drones, robots, autonomous vehicles. Primary home for any device operating in the physical world._
+_Data sources and flows._
 
-## Geospatial
+## Agentic Software Engineering — `aisoft/`
 
-_Agents driving software geospatial workflows: GIS databases, QGIS, map generation. Software-only — physical devices live under Robots._
+_Best practices for AI software engineering (Klaassen, Karpathy, Cherny, Kim, Shipper, Ondrej, Nate B. Jones, SuperLinear)._
 
-## Commercial
+## Evals — `evals/`
 
-_Business applications: startups, enterprise initiatives, productized agentic systems._
-
-## Financial
-
-_Applications to financial markets — real estate, hedge funds, trading._
-
-## Coding
-
-_Coding-assistant research, advice, and anecdotal experience._
+_Finding a small number of end-to-end tests plus metric(s) whose "pass" gives high confidence an agentic system can be trusted in business-critical production._
 
 ## Source-Type Indexes
 

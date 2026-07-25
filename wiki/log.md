@@ -1,6 +1,6 @@
 ---
 title: Wiki Change Log
-date: 2026-04-29
+date: 2026-07-24
 tags:
   - meta/log
 ---
@@ -22,7 +22,7 @@ Format:
 
 ---
 
-## 2026-04-29 — wiki bootstrap
+## 2026-07-24 — wiki bootstrap
 
 - **Created:** [[index|Wiki Index]], [[log|Change Log]]
 - **Notes:** Initial scaffolding. Categories mirror CLAUDE.md. No source ingests yet.
