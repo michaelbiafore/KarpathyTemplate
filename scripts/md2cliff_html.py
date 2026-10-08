@@ -333,6 +333,71 @@ def estimate_height_px(md_text: str, figure_heights: list[int],
     return round(height), prose_words
 
 
+def _text_of(html_fragment: str) -> str:
+    """Tag-stripped, whitespace-collapsed, lowercased text of a fragment."""
+    text = re.sub(r"<[^>]+>", "", html_fragment)
+    text = re.sub(r"&amp;", "&", text)
+    return " ".join(text.split()).strip().lower()
+
+
+def linkify_toc(html: str) -> tuple[str, dict]:
+    """Turn the contents list into live in-page links.
+
+    python-markdown's `toc` extension already stamps a slug `id` on every
+    heading, so the contents entries only need wrapping in an anchor that
+    points at the matching one. Doing it here rather than asking the summary
+    subagent to write `[text](#slug)` links keeps slug generation in one place
+    and cannot drift from the ids actually emitted.
+
+    Matching is on tag-stripped heading text: exact first, then a unique
+    prefix match either way round, so "The Substrate" still finds "The
+    Substrate: Tokens, Transformers, Training". An entry that matches nothing
+    is left as plain text -- a dead fragment link is worse than no link.
+    """
+    headings: dict[str, str] = {}
+    for m in re.finditer(r'<h([23])\s+id="([^"]+)"[^>]*>(.*?)</h\1>', html, flags=re.S):
+        key = _text_of(m.group(3))
+        if key and key != "table of contents":
+            headings.setdefault(key, m.group(2))
+
+    block = re.search(
+        r'<h2\s+id="table-of-contents"[^>]*>.*?</h2>\s*(<ul>.*?</ul>)',
+        html, flags=re.S)
+    if not block or not headings:
+        return html, {"toc_links": 0, "toc_unlinked": [], "toc_found": bool(block)}
+
+    linked, unlinked = 0, []
+
+    def resolve(key: str) -> str | None:
+        if key in headings:
+            return headings[key]
+        hits = [hid for text, hid in headings.items()
+                if text.startswith(key) or key.startswith(text)]
+        return hits[0] if len(hits) == 1 else None
+
+    def wrap(m: re.Match) -> str:
+        nonlocal linked
+        inner = m.group(1)
+        if re.search(r"<a[\s>]", inner, flags=re.I):
+            # The author wrote the link themselves. Leave it, but still count
+            # it -- `toc_links` reports how many entries are live, not how
+            # many this function happened to create.
+            linked += 1
+            return m.group(0)
+        key = _text_of(inner)
+        hid = resolve(key)
+        if not hid:
+            unlinked.append(key)
+            return m.group(0)
+        linked += 1
+        return f'<li><a href="#{hid}">{inner}</a></li>'
+
+    ul = block.group(1)
+    new_ul = re.sub(r"<li>(.*?)</li>", wrap, ul, flags=re.S)
+    return (html.replace(ul, new_ul, 1),
+            {"toc_links": linked, "toc_unlinked": unlinked, "toc_found": True})
+
+
 def build(md_path: Path, images_dir: Path, style_path: Path, title: str,
           subtitle: str | None, content_px: int, retina: int,
           max_bytes: int, max_upscale: float = MAX_UPSCALE) -> tuple[str, dict]:
@@ -417,6 +482,8 @@ def build(md_path: Path, images_dir: Path, style_path: Path, title: str,
             lambda m: f'<p style="{caption_css}">{m.group(1)}</p>',
             html_body, flags=re.S)
 
+    html_body, toc_info = linkify_toc(html_body)
+
     html_body = inject_inline_styles(html_body, inline)
 
     body_decls = inline.get("body", "")
@@ -462,6 +529,8 @@ def build(md_path: Path, images_dir: Path, style_path: Path, title: str,
         "image_bytes": total_img_bytes,
         "html_bytes": len(doc.encode("utf-8")),
         "missing_images": missing,
+        "toc_links": toc_info["toc_links"],
+        "toc_unlinked": toc_info["toc_unlinked"],
         "over_max_bytes": len(doc.encode("utf-8")) > max_bytes,
         "max_bytes": max_bytes,
     }

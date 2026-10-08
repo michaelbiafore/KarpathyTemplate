@@ -223,6 +223,11 @@ section headings that follow it (the stylesheet renders this list as a boxed
 contents panel; it counts as one of your sections). Then the sections
 themselves. Do NOT write an H1 — the renderer adds the title.
 
+Write the contents entries as PLAIN TEXT, not as markdown links. The renderer
+turns each one into a live in-page link automatically. For that to work, each
+entry must repeat its section heading's text exactly — same words, same
+punctuation, same order. Do not paraphrase, truncate or re-order them.
+
 Use the stylesheet's vocabulary where the content calls for it:
 - `> blockquote` for a claim worth quoting verbatim from the source
 - a markdown table where the source genuinely tabulates something
@@ -289,6 +294,27 @@ What it guarantees, and why each matters for email:
 | Figure lettering too large or soft | a figure is never upscaled past its intrinsic pixel width |
 | One figure eating a whole page | portrait figures capped at half column, any figure capped at 820px tall |
 | 25 MB mail attachment limits | images downscaled to 2x display width, oversized PNGs re-encoded; warns past `--max-bytes` |
+| Contents panel should be navigable | every entry auto-linked to its section's heading id; `toc_links` and `toc_unlinked` reported |
+
+#### Live contents links
+
+The renderer links the contents panel for you — it matches each list entry
+against the heading ids that python-markdown has already stamped on every
+`##`/`###`, so slugs cannot drift from the ids actually emitted. Matching is on
+heading text: exact first, then a unique prefix match either way round. An
+entry matching nothing is left as plain text, because a dead `#fragment` is
+worse than no link.
+
+Check `toc_links` and `toc_unlinked` in the report. Anything in `toc_unlinked`
+means that entry's wording drifted from its heading — send the exact heading
+text back to the subagent rather than hand-editing the HTML.
+
+> [!note] Where the links work
+> In-page `#fragment` links work in any browser, which is how an attachment is
+> normally read, and the stylesheet's `scroll-behavior: smooth` applies there
+> too. Some webmail clients rewrite or strip in-body anchors when a message is
+> displayed inline, so treat the links as a bonus for the attachment rather
+> than a guarantee for every preview pane.
 
 ### 7. Close the loop on length
 
@@ -299,6 +325,8 @@ Read `pages_delta` from the report.
   the specific number of words and figures the delta implies — then re-run step
   6. Do this at most twice; the estimate is a model, not a measurement, and
   chasing it further is not worth the tokens.
+- `toc_unlinked` non-empty: those contents entries did not match a heading.
+  Give the subagent the exact heading text and have it fix the entry wording.
 - `missing_images` non-empty: those references did not resolve and were dropped.
   Tell the subagent the exact filenames it got wrong and have it substitute real
   ones from the pool.
@@ -312,7 +340,7 @@ Cliff notes: <title>
 Source:      <PDF>  (<n> pages)
 Summarized:  N chapters
 Budget:      <PAGES> pages -> ~<WORDS> words + ~<FIGURES> figures
-Rendered:    <estimated_pages> est. pages, <figures> figures
+Rendered:    <estimated_pages> est. pages, <figures> figures, <toc_links> live contents links
 Output:      <OUT>  (<size> MB, fully self-contained)
 Dropped figures: <list>        (omit when none)
 ```
