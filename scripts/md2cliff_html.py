@@ -55,9 +55,14 @@ from PIL import Image
 # underestimated a real render by ~48%.
 #
 # So the height is built up structurally instead, from element costs in CSS px.
-# Every constant below was calibrated against a headless-Chromium render of a
-# real output file (measured 4412px; this model predicts 4388px, 0.6% off).
-# Re-measure and re-calibrate if the reference stylesheet's spacing changes.
+# Every constant below was calibrated against headless-Chromium renders of real
+# output. Accuracy measured against those renders:
+#   3-page doc, 326 prose words, 3 figures:   3673 predicted vs 3762 actual (2.4%)
+#   12-page doc, 1654 prose words, 10 figures: 12459 predicted vs 11405 (9.2%)
+# It runs slightly long on longer documents -- continuous paragraphs pack more
+# words per line than the short, heading-separated ones this was calibrated on --
+# so treat it as good to about 10%, not as a measurement. Re-calibrate if the
+# reference stylesheet's spacing changes.
 PAGE_CONTENT_PX = 1000     # usable height of one printed/scrolled page
 
 LINE_PX = 28               # 17px * 1.65 line-height

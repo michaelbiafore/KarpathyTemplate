@@ -159,14 +159,19 @@ read every file in `chapters[]` and write one combined summary to
 `summary_path`. Tell it to keep the sections' own headings so the result still
 reads front-to-back.
 
-> [!warning] Overlapping chapter files
-> `pdf2md` assigns a whole page to every TOC entry that appears on it, so when
-> several entries share a page those sibling files repeat that page's text. In
-> the 451-page test book, 23 of 157 adjacent pairs overlapped by more than 80%
-> of their lines (overall duplication was about 10%, so `scan` and `bundle`
-> word counts run high by roughly that much). Tell the chapter/bundle subagents
-> to attribute shared material to the chapter it belongs to and summarize it
-> once — the prompts below already do.
+> [!warning] Duplicate and overlapping chapter files
+> `pdf2md` gives every TOC entry the full text of the page it starts on, so
+> entries that share a start page come out carrying that page verbatim. In the
+> 451-page test book: 8 groups of body-identical files, 10 redundant copies
+> (6% of all chapter files, 3% of the words), plus partial page-boundary
+> overlap in which 23 of 157 adjacent pairs shared more than 80% of their
+> lines. `scan` and `bundle` word counts run high accordingly.
+>
+> These files are **not** byte-identical — the frontmatter `title`,
+> `chapter_number` and the H1 all differ — so a checksum or `cmp` comparison
+> will not find them. Compare bodies with the frontmatter and title lines
+> stripped. Tell the chapter/bundle subagents to attribute shared material to
+> the chapter it belongs to and summarize it once; the prompts below do.
 
 > [!note] Why 6000 words
 > It keeps a bundle inside a comfortable single-subagent read while cutting
