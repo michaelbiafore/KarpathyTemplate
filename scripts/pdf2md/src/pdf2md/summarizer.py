@@ -101,6 +101,13 @@ def extract_book_title(md_dir: Path) -> str:
         for line in text.splitlines():
             if line.startswith("# ") and "table of contents" not in line.lower():
                 return line[2:].strip()
+        # pdf2md writes "# Table of Contents" as the H1 and puts the real book
+        # title on the first bold line beneath it, so fall through to that
+        # before giving up and using the directory name.
+        for line in text.splitlines():
+            m = re.fullmatch(r"\*\*(.+?)\*\*", line.strip())
+            if m and "table of contents" not in m.group(1).lower():
+                return m.group(1).strip()
     return md_dir.name
 
 

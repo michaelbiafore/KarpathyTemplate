@@ -59,18 +59,51 @@ If `$PDF2MD` is missing, bootstrap once and continue:
 ### 2. Compute the budget
 
 This is the whole mechanism for hitting the requested length, so compute it
-explicitly rather than eyeballing it:
+explicitly rather than eyeballing it. The numbers are in CSS pixels because
+that is what actually determines length — a word count alone ignores headings,
+the contents panel and figure margins, which in a short illustrated document
+account for more height than the prose does.
 
 ```
-FIGURES = max(1, round(1.2 * PAGES))
-WORDS   = max(150, round(PAGES * 450 - FIGURES * 200))
+FIGURES    = max(1, round(0.8 * PAGES))
+SECTIONS   = max(2, round(1.3 * PAGES))  # `##` headings; the real length lever
+HEADING_PX = 190 + SECTIONS * 120        # contents panel + headings
+PROSE_PX   = PAGES * 1000 - 260 - HEADING_PX - FIGURES * 490
+WORDS      = max(120, round(PROSE_PX / 2.95))
 ```
 
-450 words is a page of this stylesheet's body copy at 17px/1.65; a rendered
-figure plus caption averages about 0.45 page, hence the 200-word charge per
-figure. State both numbers to the user before starting — on a short target they
-are smaller than people expect, and that is the figure-heavy brief working as
-intended.
+Where the constants come from, all calibrated against a headless-Chromium
+render of a real output file:
+
+| Constant | Meaning |
+|---|---|
+| `1000` | usable CSS px in one page |
+| `260` | fixed document chrome — body padding, title, subtitle |
+| `490` | a figure plus its margins and caption, averaged |
+| `2.95` | px per prose word (28px line / 9.5 words per line, measured) |
+| `120` | a heading plus its generous top margin, averaged over `##` and `###` |
+| `190` | the boxed contents panel |
+
+Worked examples: 3 pages → 2 figures, 4 sections, ~370 words; 12 pages → 10
+figures, 16 sections, ~1,660 words.
+
+> [!warning] Section count is the lever people forget
+> Headings are expensive in this stylesheet — `h2` carries a 2.6rem top margin
+> plus 1.2rem padding and a rule, about 95px before a word is set, and the
+> contents panel costs another ~190px. A first pass on a 3-page target came
+> back with 8 headings and overshot by 22% on heading cost alone, even after
+> the prose was cut 37%. Pass `SECTIONS` to the subagent as a hard cap.
+
+> [!note] Why only 0.8 figures per page, given the figure-heavy brief
+> Because each figure already eats roughly half a page in this stylesheet
+> (17px type, 1.65 line-height, an 880px column). At 0.8/page the figures still
+> occupy about 40% of the total area — genuinely figure-dominated — while
+> leaving prose that is readable rather than vestigial. Pushing to 1.2/page
+> drives a 3-page budget down to under 100 words, which is not a summary.
+
+State `WORDS` and `FIGURES` to the user before starting. The renderer's own
+estimate in step 6 is the authority on length; these numbers only aim the
+first draft.
 
 ### 3. Derive the slug and convert
 
@@ -126,6 +159,15 @@ read every file in `chapters[]` and write one combined summary to
 `summary_path`. Tell it to keep the sections' own headings so the result still
 reads front-to-back.
 
+> [!warning] Overlapping chapter files
+> `pdf2md` assigns a whole page to every TOC entry that appears on it, so when
+> several entries share a page those sibling files repeat that page's text. In
+> the 451-page test book, 23 of 157 adjacent pairs overlapped by more than 80%
+> of their lines (overall duplication was about 10%, so `scan` and `bundle`
+> word counts run high by roughly that much). Tell the chapter/bundle subagents
+> to attribute shared material to the chapter it belongs to and summarize it
+> once — the prompts below already do.
+
 > [!note] Why 6000 words
 > It keeps a bundle inside a comfortable single-subagent read while cutting
 > 151 chapters to ~20 bundles — about 7 batches instead of 51. Raise it to
@@ -167,11 +209,14 @@ These are tight. Spend the words on the load-bearing argument and let the
 figures carry the rest — that is the point of this format, not a compromise.
 
 ## Structure
+Use AT MOST {SECTIONS} `##` sections, and prefer no `###` subsections at all —
+headings are expensive here and every one you add comes out of the prose and
+figure budget.
+
 Start with `## Table of Contents` followed by a bulleted list of the `##`
 section headings that follow it (the stylesheet renders this list as a boxed
-contents panel). Then the sections themselves: `##` for major sections, `###`
-beneath where a section genuinely splits. Do NOT write an H1 — the renderer
-adds the title.
+contents panel; it counts as one of your sections). Then the sections
+themselves. Do NOT write an H1 — the renderer adds the title.
 
 Use the stylesheet's vocabulary where the content calls for it:
 - `> blockquote` for a claim worth quoting verbatim from the source

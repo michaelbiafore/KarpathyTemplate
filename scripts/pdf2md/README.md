@@ -128,6 +128,20 @@ For an input PDF, `pdf2md` produces:
   per detected chapter (via TOC heuristics) plus the same supporting
   files.
 
+### Known quirk: overlapping chapter files
+
+The chapter splitter works from the PDF's TOC and gives each entry the full text
+of the page it starts on. When several entries land on one page, each of those
+files carries that page's text, so sibling chapters overlap. Measured on a
+451-page title: 23 of 157 adjacent pairs shared more than 80% of their lines,
+with overall duplication around 10%. Consequences worth knowing:
+
+- `scan` and `bundle` word counts run high by roughly the duplication rate.
+- Any summarization step should be told to summarize shared material once and
+  attribute it to the chapter it actually belongs to.
+- Files are *not* byte-identical (frontmatter titles differ), so a checksum
+  comparison will not find these — compare bodies or line sets.
+
 Image extraction has filters to drop tiny images (`--min-image-size`,
 default 80×80) and recurring images like page-headers (`--image-
 recurrence-threshold`, default 0.30 = 30% of pages). These keep the
