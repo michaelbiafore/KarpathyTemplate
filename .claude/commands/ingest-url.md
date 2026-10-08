@@ -14,9 +14,13 @@ Ingest a web article into the second brain wiki.
 
    - **PDFs** (URL ending in `.pdf`, or user supplied a local PDF path): convert to markdown first via the vendored `pdf2md` package, then `Read` the resulting `.md`:
      ```bash
-     scripts/pdf2md/.venv/Scripts/pdf2md.exe "<file-or-downloaded-path>" -o /tmp/pdf_out
+     ROOT="$(git rev-parse --show-toplevel)"
+     PDF2MD="$ROOT/scripts/pdf2md/.venv/Scripts/pdf2md.exe"
+     [ -x "$PDF2MD" ] || PDF2MD="$ROOT/scripts/pdf2md/.venv/bin/pdf2md"
+     OUT_DIR="$(mktemp -d)/pdf_out"
+     "$PDF2MD" "<file-or-downloaded-path>" -o "$OUT_DIR"
      ```
-     If `scripts/pdf2md/.venv/` does not exist yet, bootstrap once with `cd scripts/pdf2md && uv venv && uv pip install -e .`. Do **not** call `Read` on a `.pdf` directly — it renders each page as an image, which is far slower and far more token-expensive than text extraction.
+     If `$ROOT/scripts/pdf2md/.venv/` does not exist yet, bootstrap once with `cd "$ROOT/scripts/pdf2md" && uv venv && uv pip install -e .`. If the PDF turns out to be a multi-chapter book rather than a paper, stop and use `/ingest-pdf` instead — it routes books into `sources/books/<slug>/` and runs `/summarize-chapters` over them. Do **not** call `Read` on a `.pdf` directly — it renders each page as an image, which is far slower and far more token-expensive than text extraction.
 
    - **Other web articles**: use defuddle:
      ```bash

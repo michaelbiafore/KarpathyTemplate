@@ -29,8 +29,8 @@ def main():
     parser.add_argument(
         "-o", "--output",
         type=str,
-        default="md_out",
-        help="Output directory (default: md_out)"
+        required=True,
+        help="Output directory (required). Resolved to an absolute path, so the result never depends on the current working directory."
     )
 
     parser.add_argument(
@@ -84,12 +84,12 @@ def main():
     args = parser.parse_args()
 
     # Validate input
-    pdf_path = Path(args.pdf_path)
+    pdf_path = Path(args.pdf_path).expanduser().resolve()
     if not pdf_path.exists():
         print(f"Error: PDF file not found: {pdf_path}", file=sys.stderr)
         sys.exit(1)
 
-    output_dir = Path(args.output)
+    output_dir = Path(args.output).expanduser().resolve()
 
     # Run conversion
     try:

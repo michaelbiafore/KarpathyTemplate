@@ -27,8 +27,8 @@ def main(args: list[str] | None = None) -> int:
     parser.add_argument(
         "-o", "--output",
         type=Path,
-        default=Path("md_out"),
-        help="Output directory (default: md_out)",
+        required=True,
+        help="Output directory (required). Resolved to an absolute path, so the result never depends on the current working directory.",
     )
 
     parser.add_argument(
@@ -61,6 +61,11 @@ def main(args: list[str] | None = None) -> int:
     )
 
     parsed = parser.parse_args(args)
+
+    # Resolve both paths up front so nothing downstream depends on the
+    # current working directory.
+    parsed.input = parsed.input.expanduser().resolve()
+    parsed.output = parsed.output.expanduser().resolve()
 
     # Validate input
     if not parsed.input.exists():

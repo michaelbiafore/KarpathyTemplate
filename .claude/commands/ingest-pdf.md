@@ -8,15 +8,26 @@ sitting in `inbox/`, `/ingest-inbox` picks them up. For books (`.epub`), use
 `/ingest-epub` instead — it has a dedicated chapter-by-chapter pipeline.
 
 This command uses the vendored `pdf2md` package at `scripts/pdf2md/` (PDF2MD4Claude,
-pinned at commit `f50b9ed`). One-time bootstrap if `scripts/pdf2md/.venv/` does
-not exist yet:
+pinned at commit `f50b9ed`).
+
+## Path contract
+
+Resolve the vault root once, absolutely, and build every other path from it.
+Nothing here depends on the working directory or on any sibling repository
+being checked out nearby:
 
 ```bash
-cd scripts/pdf2md && uv venv && uv pip install -e .
+ROOT="$(git rev-parse --show-toplevel)"
+PDF2MD="$ROOT/scripts/pdf2md/.venv/Scripts/pdf2md.exe"          # Windows
+[ -x "$PDF2MD" ] || PDF2MD="$ROOT/scripts/pdf2md/.venv/bin/pdf2md"   # POSIX
 ```
 
-If the venv is missing when this command runs, run the bootstrap first before
-the conversion step.
+One-time bootstrap if `$ROOT/scripts/pdf2md/.venv/` does not exist yet — run it
+before the conversion step:
+
+```bash
+cd "$ROOT/scripts/pdf2md" && uv venv && uv pip install -e .
+```
 
 ## Usage
 
@@ -47,21 +58,71 @@ which is far slower and far more token-expensive than text extraction. Convert
 first:
 
 ```bash
-scripts/pdf2md/.venv/Scripts/pdf2md.exe "<PDF-PATH>" -o /tmp/pdf_out
+OUT_DIR="$(mktemp -d)/pdf_out"
+"$PDF2MD" "<ABSOLUTE-PDF-PATH>" -o "$OUT_DIR"
 ```
 
-Then `Read` the resulting `.md` from `/tmp/pdf_out`. If the package name is
+`$OUT_DIR` is absolute — keep using it by variable for the rest of the run.
+Then `Read` the resulting `.md` from `$OUT_DIR`. If the package name is
 arxiv-shaped (`NNNN.NNNNN.pdf`) or the content is clearly a research paper,
-prefer the `arxiv` source folder in the next step.
+prefer the `arxiv` source folder in step 6.
 
-### 4. Determine the best category
+> [!note] One chapter or many?
+> A paper or slide deck converts to a single `01_Full_Document.md`. A book or
+> thesis converts to one `NN_<chapter>.md` per detected chapter. Count them —
+> the branch matters in step 4.
+
+### 4. Branch on document shape
+
+Count the content chapters the conversion produced:
+
+```bash
+SUMMARIZE="$ROOT/scripts/pdf2md/.venv/Scripts/pdf2md-summarize.exe"
+[ -x "$SUMMARIZE" ] || SUMMARIZE="$ROOT/scripts/pdf2md/.venv/bin/pdf2md-summarize"
+"$SUMMARIZE" scan "$OUT_DIR"
+```
+
+**One content chapter** (a paper, report, or slide deck — the common case):
+continue to step 5. Chapter summarization buys nothing here; the wiki page you
+write in step 7 *is* the summary, written from the full text.
+
+**Two or more content chapters** (a book, thesis, or manual): this is a book,
+and it belongs in the book layout rather than collapsed into one source file.
+Switch to the book flow:
+
+1. Derive a slug as `/ingest-epub` step 2 describes
+   (`<author-last>-<short-title>-<year>`, kebab-case) and set
+   `BOOK_DIR="$ROOT/sources/books/<slug>"`.
+2. Move the whole conversion output there — chapters, `images/`,
+   `Table_of_Contents.md` — so the summaries land beside the figures they
+   reference:
+
+   ```bash
+   mkdir -p "$BOOK_DIR" && cp -r "$OUT_DIR"/. "$BOOK_DIR"/
+   ```
+
+3. Run the summarizer:
+
+   ```
+   /summarize-chapters "$BOOK_DIR" --tool pdf --max-parallel 3
+   ```
+
+   This produces `Sum_<NN>_<chapter>.md` per chapter, a
+   `Book_Summary_<Title>.md` synthesized from them, and a stitched
+   `Sum_<Title>.md`.
+
+4. Then follow `/ingest-epub` steps 5-9 (frontmatter, wiki-page synthesis,
+   index, log, report) — the pattern is identical once the summaries exist.
+   Skip the rest of this command.
+
+### 5. Determine the best category
 
 Pick from the Categories table in CLAUDE.md — it is the source of truth and may
 have been personalized, so always re-check it. If it's a research paper, prefer
 the `arxiv` source-type folder. If `--category` was passed, use it. If nothing
 fits well, ask the user.
 
-### 5. Save the raw source
+### 6. Save the raw source
 
 Write the converted markdown to `sources/<category>/<kebab-case-title>.md` (or
 `sources/arxiv/` for papers) with frontmatter:
@@ -84,7 +145,7 @@ alongside the markdown, move them next to the source (e.g.
 
 Never leave the only copy in `/tmp` — `sources/` is the immutable record.
 
-### 6. Follow the full ingest workflow
+### 7. Follow the full ingest workflow
 
 Per CLAUDE.md's Operations → Ingest and the Efficiency invariants:
 
@@ -99,7 +160,7 @@ Per CLAUDE.md's Operations → Ingest and the Efficiency invariants:
 - Update `wiki/index.md`.
 - Append to `wiki/log.md`.
 
-### 7. Report
+### 8. Report
 
 Report which source file was written and which wiki pages were created/updated.
 

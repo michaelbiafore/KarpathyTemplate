@@ -8,6 +8,7 @@ from .converter import MarkdownConverter
 from .toc_generator import TOCGenerator
 from .index_generator import IndexGenerator
 from .abstract_writer import AbstractWriter
+from .summarizer import ChapterSummarizer
 
 __all__ = [
     "PDFExtractor",
@@ -16,4 +17,5 @@ __all__ = [
     "TOCGenerator",
     "IndexGenerator",
     "AbstractWriter",
+    "ChapterSummarizer",
 ]

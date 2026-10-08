@@ -2,8 +2,10 @@
 
 Vendored copy of PDF2MD4Claude. Provides two console scripts: `pdf2md`
 (PDF → structured Markdown chapters + extracted images) and
-`pdf2md-summarize` (chapter summary helper). Used by `/ingest-inbox` and
-`/ingest-url` whenever a `.pdf` file or URL is encountered.
+`pdf2md-summarize` (chapter scanner, book-summary planner, and summary
+assembler). Used by `/ingest-pdf`, `/ingest-inbox`, and `/ingest-url`
+whenever a `.pdf` file or URL is encountered, and by `/summarize-chapters`
+for LLM summarization.
 
 ## Upstream pin
 
@@ -48,14 +50,59 @@ by full venv path; the venv does **not** need to be activated.
 
 ```bash
 # Convert a PDF to per-chapter Markdown + extract images
-.venv/Scripts/pdf2md.exe path/to/paper.pdf -o /tmp/pdf_out
+.venv/Scripts/pdf2md.exe /absolute/path/to/paper.pdf -o /absolute/out/dir
 
 # View the help
 .venv/Scripts/pdf2md.exe --help
 ```
 
-The slash commands `/ingest-inbox` and `/ingest-url` handle PDF routing
-automatically — don't run `pdf2md.exe` by hand for routine ingest.
+The slash commands `/ingest-pdf`, `/ingest-inbox`, and `/ingest-url` handle
+PDF routing automatically — don't run `pdf2md.exe` by hand for routine ingest.
+
+## Summaries: two different things
+
+| Artifact | Produced by | How |
+|---|---|---|
+| `ChapterAbstracts.md` | `pdf2md` during conversion | **Regex heuristics** (`abstract_writer.py`) — a first-paragraph excerpt plus keyword lists. Offline, free, and not a real summary. |
+| `Sum_<NN>_<chapter>.md` | `/summarize-chapters` | **LLM**, one Claude Code subagent per content chapter, key figures/equations embedded. |
+| `Book_Summary_<Title>.md` | `/summarize-chapters` | **LLM**, one subagent synthesizing the whole book *from the chapter summaries*. |
+| `Sum_<Title>.md` | `pdf2md-summarize assemble` | Mechanical stitch: the book-level summary followed by every chapter summary. |
+
+No API key is involved. The LLM work is done by Claude Code subagents
+dispatched by the slash command; this package never calls a model.
+
+## The `pdf2md-summarize` CLI
+
+Three subcommands, all mechanical — they tell the subagents what to read and
+then join up the results:
+
+```bash
+# 1. Which chapters are real content, and how long should each summary be?
+pdf2md-summarize scan <absolute-md-dir>
+
+# 2. Which chapter summaries exist, which are missing, how long should the
+#    book-level summary be, and where should it be written?
+pdf2md-summarize book-plan <absolute-md-dir>
+
+# 3. Stitch the book-level summary + all chapter summaries into one file.
+pdf2md-summarize assemble <absolute-md-dir>
+```
+
+`scan` emits `path`, `filename`, `title`, `word_count`, `target_min`,
+`target_max`, `figure_count`, `summary_path`. `book-plan` emits
+`chapter_summaries[]`, `missing_summaries[]`, `total_summary_words`,
+`target_min`/`target_max`, `book_summary_path`, `concatenated_path`.
+
+> [!important] Path contract
+> `md_dir` is **required** and resolved to an absolute path; every path emitted
+> is absolute. There is no `md_out` default, nothing depends on the working
+> directory, and nothing assumes a sibling repository is checked out nearby.
+
+`assemble` exits **1** rather than writing a title-only stub when no
+`Sum_<NN>_*.md` files exist yet, so a failed summarization run cannot look like
+a successful one. It is idempotent — re-running is safe. Avoid `-o`: the
+summaries carry relative `images/...` references that only resolve while they
+sit beside the `images/` directory.
 
 ## What it produces
 
@@ -63,7 +110,7 @@ For an input PDF, `pdf2md` produces:
 
 - **Single-document PDFs** (papers, blog-post prints): one
   `01_Full_Document.md` plus `images/`, `Table_of_Contents.md`,
-  `ChapterAbstracts.md`.
+  `ChapterAbstracts.md`. Not worth summarizing — the wiki page is the summary.
 - **Multi-chapter PDFs** (books, theses): one `NN_<chapter_name>.md`
   per detected chapter (via TOC heuristics) plus the same supporting
   files.

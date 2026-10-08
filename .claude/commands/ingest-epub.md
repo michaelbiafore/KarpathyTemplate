@@ -3,15 +3,28 @@ chapter via subagents, then synthesize wiki pages with figures embedded.
 
 This command vendors the [EPUB2MD4Claude](https://github.com/michaelbiafore/EPUB2MD4Claude)
 package locally (at `scripts/epub2md/`, pinned to upstream tag
-`vendored-2026-04-28`). One-time bootstrap if `scripts/epub2md/.venv/` does
-not exist yet:
+`vendored-2026-04-28`).
+
+## Path contract
+
+Resolve the vault root once, absolutely, and build every other path from it.
+Nothing here depends on the working directory or on any sibling repository
+being checked out nearby:
 
 ```bash
-cd scripts/epub2md && uv venv && uv pip install -e .
+ROOT="$(git rev-parse --show-toplevel)"
+EPUB2MD="$ROOT/scripts/epub2md/.venv/Scripts/epub2md.exe"      # Windows
+[ -x "$EPUB2MD" ] || EPUB2MD="$ROOT/scripts/epub2md/.venv/bin/epub2md"   # POSIX
+VENV_PY="$ROOT/scripts/epub2md/.venv/Scripts/python.exe"
+[ -x "$VENV_PY" ] || VENV_PY="$ROOT/scripts/epub2md/.venv/bin/python"
 ```
 
-If the venv is missing when this command runs, run the bootstrap first
-before the conversion step.
+One-time bootstrap if `$ROOT/scripts/epub2md/.venv/` does not exist yet — run
+it before the conversion step:
+
+```bash
+cd "$ROOT/scripts/epub2md" && uv venv && uv pip install -e .
+```
 
 ## Usage
 
@@ -35,10 +48,10 @@ Read the EPUB's metadata (title, author, year) using a one-liner
 against the vendored package:
 
 ```bash
-scripts/epub2md/.venv/Scripts/python.exe -c "
+"$VENV_PY" -c "
 from pathlib import Path
 from epub2md.extractor import EPUBExtractor
-e = EPUBExtractor(Path(r'<EPUB-PATH>'))
+e = EPUBExtractor(Path(r'<ABSOLUTE-EPUB-PATH>'))
 print(repr(e.title), '|', repr(e.author))
 "
 ```
@@ -48,7 +61,7 @@ lowercased, sanitized (alphanumeric + hyphens only), truncated to ~40
 chars. Example: *Time Series Forecasting Using Foundation Models* by
 Marco Peixeiro, 2025 → `peixeiro-tsfm-2025`.
 
-If `sources/books/<slug>/` already exists:
+If `$ROOT/sources/books/<slug>/` already exists:
 - If `--force` is set, proceed (overwrite chapter files; image dir will
   be replaced).
 - Otherwise stop and ask the user to use `--slug <override>` or `--force`.
@@ -56,7 +69,8 @@ If `sources/books/<slug>/` already exists:
 ### 3. Convert EPUB → markdown + images
 
 ```bash
-scripts/epub2md/.venv/Scripts/epub2md.exe "<EPUB-PATH>" -o "sources/books/<slug>" -v
+BOOK_DIR="$ROOT/sources/books/<slug>"
+"$EPUB2MD" "<ABSOLUTE-EPUB-PATH>" -o "$BOOK_DIR" -v
 ```
 
 Verify the output dir has at least:
@@ -65,82 +79,36 @@ Verify the output dir has at least:
 - `images/` directory with > 0 images
 - `ChapterAbstracts.md`
 
-### 4. Scan for content chapters
+### 4. Summarize the chapters and the book
 
-```bash
-scripts/epub2md/.venv/Scripts/epub2md-summarize.exe scan "sources/books/<slug>"
-```
-
-Parse the JSON output. Each entry has `{path, filename, title, word_count, target_min, target_max}`.
-Front/back matter (cover, contents, dedication, copyright, index, etc.) and
-chapters under 500 bytes are auto-filtered out.
-
-If `--skip-synthesis` was passed, jump to step 8 (frontmatter) and stop.
-
-### 5. Summarize each content chapter via Agent subagents
-
-For each chapter in the scan results, dispatch an `Agent` (subagent_type:
-`general-purpose`) with the prompt template below. Launch in batches of
-`--max-parallel` (default **3**) — call multiple Agent tools in a single
-message for parallelism, wait for the batch to complete, then start the
-next batch. This avoids subagent rate-limit issues on long books.
-
-**Prompt template:**
+Delegate to `/summarize-chapters`, which handles the scan, the per-chapter
+Agent subagents, the book-level synthesis subagent, and the final assembly:
 
 ```
-Read the chapter at {path}. Write a summary of this book chapter between
-{target_min} and {target_max} words.
-
-Preserve key concepts, arguments, examples, and chapter structure.
-Use markdown formatting with headings that mirror the chapter's sections.
-Write the summary to {path_dir}/Sum_{filename}.
-Do NOT include YAML frontmatter in the summary.
-
-## Image Handling — Math Equations
-
-This book may use image-based math: equations appear as
-`![](images/<file>.png)` or similar references. The actual image files
-are on disk at `{path_dir}/images/` and you can view them with the Read
-tool to see what each equation contains.
-
-Your key task: identify the most important equations in the chapter and
-INCLUDE their exact `![](images/...)` references in your summary. To do
-this:
-1. Scan the chapter for all `![](images/...)` references.
-2. Use the Read tool to view a sample of the referenced image files so
-   you know what equations / figures they represent.
-3. Select the equations that are most important — defining formulas, key
-   theorems, central results, or equations that later sections build
-   upon.
-4. Include those image references inline in your summary at the
-   appropriate location, preserving the exact markdown syntax.
-
-Guidelines:
-- Aim to include 3-8 key equation / figure images per chapter (fewer for
-  short chapters).
-- Prioritize: definitions, theorem statements, main results, and
-  equations referenced repeatedly throughout the chapter.
-- For large figure images (diagrams, block diagrams, charts), include
-  them only if they are central to the chapter's argument.
-- Do NOT include every image — only those essential to understanding key
-  concepts.
+/summarize-chapters "$BOOK_DIR" --tool epub --max-parallel <N>
 ```
 
-If a subagent fails on a chapter, log the failure but continue with
-remaining chapters. The final report should surface failed chapters.
+Pass `--max-parallel` through from this command (default **3**). That command
+produces, all inside `$BOOK_DIR`:
 
-### 6. Assemble concatenated summary
+| File | Content |
+|---|---|
+| `Sum_<NNN>_<chapter>.md` | one LLM summary per content chapter, key equations/figures embedded |
+| `Book_Summary_<Title>.md` | whole-book synthesis, built from the chapter summaries |
+| `Sum_<Title>.md` | the book-level summary followed by every chapter summary |
 
-```bash
-scripts/epub2md/.venv/Scripts/epub2md-summarize.exe assemble "sources/books/<slug>"
-```
+Front/back matter and sub-500-byte chapters are filtered out by its `scan`
+step; part dividers (`Part0001`, `Part I:`) are dropped too. Note any chapters
+it reports as failed and carry them into the final report.
 
-Produces `Sum_<book-title>.md` in the same directory.
+If `--skip-synthesis` was passed, stop after this step and jump to step 5
+(frontmatter) — the summaries are on disk and the wiki pages are the part being
+skipped.
 
-### 7. Add YAML frontmatter to each `Sum_*.md`
+### 5. Add YAML frontmatter to each `Sum_*.md`
 
-For each `Sum_*.md` file in `sources/books/<slug>/`, prepend frontmatter
-matching this shape (use the metadata extracted in step 2):
+For each `Sum_*.md` and `Book_Summary_*.md` file in `$BOOK_DIR`, prepend
+frontmatter matching this shape (use the metadata extracted in step 2):
 
 ```yaml
 ---
@@ -161,15 +129,30 @@ tags:
 A small Python loop with `pathlib` is the simplest implementation; see
 how the Peixeiro batch did it (commit `c823e6f`) for a working example.
 
-### 8. Synthesize wiki pages
+> [!warning] Do this after step 4, never before
+> `assemble` strips frontmatter from the book-level summary when it embeds it,
+> and it rewrites `Sum_<Title>.md` wholesale. Frontmatter added here survives
+> only because step 4 has already finished. If you re-run
+> `/summarize-chapters` afterwards, re-apply this step.
+
+### 6. Synthesize wiki pages
 
 This is the judgment-heavy step. The pattern, drawn from the Peixeiro
 ingest:
 
-#### 8a. Read the book overview
+#### 6a. Read the book overview
 
-Read the concatenated `Sum_<book-title>.md`. Skim each per-chapter
-summary. Identify:
+Start with `Book_Summary_<Title>.md` — the book-level synthesis from step 4. It
+already states the scope, the argument, the named frameworks, and the
+takeaways, which is most of what this step needs. Then read the per-chapter
+summaries in `Sum_<Title>.md` for the detail the synthesis compressed away.
+
+> [!warning] Don't synthesize wiki pages from the book-level summary alone
+> It is deliberately lossy. The per-chapter/new-entity decision in 6b and the
+> second-mention rule in 6d both depend on knowing what each individual chapter
+> covers, so you still need a pass over the chapter summaries.
+
+Identify:
 - **What the book is about** (top-level scope, target audience, era)
 - **Which chapters cover models/topics that already have wiki pages**
   (look in `wiki/index.md` first per the index-first rule)
@@ -178,7 +161,7 @@ summary. Identify:
 - **Which chapters are too short / part-divider-only / references** to
   warrant a dedicated wiki page
 
-#### 8b. Decide page set
+#### 6b. Decide page set
 
 For each substantive chapter, decide between:
 - **Per-chapter page** named `<slug>-ch<N>-<topic>.md` for chapters
@@ -196,10 +179,10 @@ Always create one **book-overview wiki page**: `<slug>-book.md`, with:
 - Capstone results, if the book has them
 - Related links to existing entity pages
 
-#### 8c. Write the wiki pages
+#### 6c. Write the wiki pages
 
 Each page should embed **3-6 figures liberally**, drawn from
-`sources/books/<slug>/images/`, via vault-relative paths:
+`$BOOK_DIR/images/`, via vault-relative paths:
 
 ```markdown
 ![Caption describing the figure](../../sources/books/<slug>/images/<file>.png)
@@ -212,7 +195,7 @@ Cross-reference existing entity pages where they exist (use
 `[[wikilink|Display Text]]` style) and forward-link to other chapter
 pages.
 
-#### 8d. Apply the second-mention rule
+#### 6d. Apply the second-mention rule
 
 If any model / framework / concept named in this book has been
 substantively mentioned in a prior wiki source but doesn't have its own
@@ -221,19 +204,19 @@ promotion. Create the entity page now and cross-link it from the chapter
 page that introduced it. (Track these as "promotion candidates" notes
 inline if you defer.)
 
-### 9. Update `wiki/index.md`
+### 7. Update `wiki/index.md`
 
 Pick the category from CLAUDE.md's Categories table that best fits the
 book's primary topic. Under that category section, add a "Books"
 subsection (create if missing) with a parent entry for the new book and
 bulleted children for each per-chapter page. If new entity pages were
-created in step 8d, add them under the same category — or under whichever
+created in step 6d, add them under the same category — or under whichever
 category the entity belongs to if it's broader than the book's scope.
 
 Always re-check CLAUDE.md's Categories table — it is the source of truth
 and may have been personalized.
 
-### 10. Append to `wiki/log.md`
+### 8. Append to `wiki/log.md`
 
 One batch row covering the whole ingest. Include:
 - The book title and slug
@@ -244,14 +227,16 @@ One batch row covering the whole ingest. Include:
 - Touch budget note (this will exceed the 5-page soft cap; that's
   expected for a book ingest)
 
-### 11. Report
+### 9. Report
 
 Final report to the user:
 
 ```
 Book ingested: <title>
 Slug: <slug>
-Chapters summarized: N (skipped M as front/back matter)
+Chapters summarized: N (skipped M as front/back matter, K failed)
+Book-level summary: Book_Summary_<Title>.md (<words> words)
+Stitched summary: Sum_<Title>.md
 Figures preserved: <count>
 Wiki pages created: <count> (list paths)
 New entity pages: <count> (if any)
@@ -264,8 +249,14 @@ Failed chapters: <list> (if any)
 - **Long books (>30 chapters):** the default `--max-parallel 3` keeps
   subagent rate consumption modest. Bump to 5 if the book is short and
   you want speed.
-- **Math-heavy books:** the subagent prompt explicitly handles image-based
-  math. Trust it; don't try to pre-process equations yourself.
+- **Math-heavy books:** the chapter-subagent prompt in `/summarize-chapters`
+  explicitly handles image-based math. Trust it; don't try to pre-process
+  equations yourself.
+- **`ChapterAbstracts.md` is not a summary.** `epub2md` emits it during
+  conversion from regex heuristics (`abstract_writer.py`) — a first-paragraph
+  excerpt plus keyword lists. The LLM summaries are the `Sum_*` and
+  `Book_Summary_*` files from step 4. Don't build wiki pages off the
+  abstracts file.
 - **Books overlapping existing wiki coverage:** prefer focused per-chapter
   pages that cross-reference existing entity pages over duplicating their
   content. Example: a chapter on STPA in a book that follows after the

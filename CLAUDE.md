@@ -11,7 +11,7 @@ This is a personal knowledge base (LLM Wiki) managed by Claude, based on [Andrej
 **External tooling for ingestion.** Three separate paths, all opt-in:
 - `npx defuddle` — non-Substack web articles. Install once: `npm install -g defuddle`.
 - `scripts/epub2md/` (vendored Python package, drives `/ingest-epub`) — EPUB books. One-time bootstrap per machine: `cd scripts/epub2md && uv venv && uv pip install -e .`.
-- `scripts/pdf2md/` (vendored Python package, drives the PDF branch of `/ingest-inbox` and `/ingest-url`) — PDF papers/books. Bootstrap: `cd scripts/pdf2md && uv venv && uv pip install -e .`.
+- `scripts/pdf2md/` (vendored Python package, drives `/ingest-pdf` and the PDF branch of `/ingest-inbox` and `/ingest-url`) — PDF papers/books. Bootstrap: `cd scripts/pdf2md && uv venv && uv pip install -e .`.
 - `scripts/fetch_substack.py` (PEP 723 self-installing) — Substack URLs. No bootstrap needed beyond `uv` being installed and a one-time `uv run --with playwright playwright install chromium`.
 
 **Onboarding for new clones.** If you're operating in a fresh clone of this repo and any of `scripts/epub2md/.venv/` or `scripts/pdf2md/.venv/` don't exist, the corresponding ingest path will fail. Bootstrap the missing venv before invoking the slash command, or point the user at `SETUP.md` for the full new-machine setup walkthrough.
@@ -134,6 +134,7 @@ Sources are organized by type within `sources/`:
 | Web Articles | `sources/<category>/` | Web articles, blog posts. Fetched via `defuddle`. |
 | Research Papers | `sources/arxiv/` | Arxiv (and other similar) research papers. PDFs converted via vendored `pdf2md` first. |
 | PDFs (other) | `sources/<category>/` | Non-arxiv PDFs (papers, reports, slide decks). Always convert with vendored `pdf2md` first — never `Read` a `.pdf` directly (it renders each page as an image and is far slower / more token-expensive). |
+| Books (PDF) | `sources/books/<slug>/` | Multi-chapter PDFs. Same layout as EPUB books: per-chapter markdown, `images/`, and LLM summaries from `/summarize-chapters`. |
 | Books | `sources/books/<slug>/` | EPUBs ingested via `/ingest-epub`; produces per-chapter markdown + an `images/` folder. |
 | Substack | `sources/substack/` | Free or paywalled posts via `scripts/fetch_substack.py`. Figures land in `<slug>_figs/`. |
 | YouTube | `sources/youtube/` | Video transcripts and screenshots. |
@@ -148,8 +149,9 @@ See `sources/books/README.md` and `sources/youtube/README.md` for recommended fo
 |---------|-------|--------------|
 | `/ingest-url` | `/ingest-url <url>` | Fetches an article and runs full ingest. Routes by URL shape: Substack URLs → `scripts/fetch_substack.py` (Playwright + cookies, downloads figures); `.pdf` URLs → vendored `pdf2md`; other web → defuddle. |
 | `/ingest-inbox` | `/ingest-inbox` | Processes all `.md` files in `inbox/`. For PDFs, calls vendored `pdf2md` first; for `.epub`, redirects the user to `/ingest-epub`. |
-| `/ingest-pdf` | `/ingest-pdf <path-to.pdf>` | Converts a local PDF (paper, report, slide deck) to markdown via vendored `pdf2md`, then runs the full ingest. Clean entry point for PDF files on disk (not URLs or inbox drops). |
-| `/ingest-epub` | `/ingest-epub <path-to.epub>` | Extracts EPUB chapters + images into `sources/books/<slug>/`, summarizes content chapters via Agent subagents, synthesizes per-chapter and book-overview wiki pages. |
+| `/ingest-pdf` | `/ingest-pdf <path-to.pdf>` | Converts a local PDF (paper, report, slide deck) to markdown via vendored `pdf2md`, then runs the full ingest. Multi-chapter PDFs (books, theses) route into `sources/books/<slug>/` and get summarized via `/summarize-chapters`. |
+| `/ingest-epub` | `/ingest-epub <path-to.epub>` | Extracts EPUB chapters + images into `sources/books/<slug>/`, then delegates to `/summarize-chapters` and synthesizes per-chapter and book-overview wiki pages. |
+| `/summarize-chapters` | `/summarize-chapters <absolute-md-dir> [--tool pdf\|epub]` | Produces LLM chapter summaries (one Agent subagent each), an LLM book-level summary synthesized from them, and one stitched `Sum_<Title>.md`. Works on `pdf2md` or `epub2md` output. No API key. |
 | `/maintain-wiki` | `/maintain-wiki` | Health-checks the wiki for broken links, orphans, gaps, contradictions. |
 
 ## Available Skills

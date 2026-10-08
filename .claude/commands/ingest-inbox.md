@@ -9,9 +9,13 @@ Process all notes in the inbox folder, classifying and integrating them into the
       - **For `.epub` files:** stop and use `/ingest-epub <path>` instead — it has a dedicated pipeline for books (chapter extraction, summarization via subagents, wiki page synthesis). Do not improvise.
       - **For PDFs:** convert to markdown first via the vendored `pdf2md` package, then `Read` the resulting `.md`:
         ```bash
-        scripts/pdf2md/.venv/Scripts/pdf2md.exe "<path>" -o /tmp/pdf_out
+        ROOT="$(git rev-parse --show-toplevel)"
+        PDF2MD="$ROOT/scripts/pdf2md/.venv/Scripts/pdf2md.exe"
+        [ -x "$PDF2MD" ] || PDF2MD="$ROOT/scripts/pdf2md/.venv/bin/pdf2md"
+        OUT_DIR="$(mktemp -d)/pdf_out"
+        "$PDF2MD" "<path>" -o "$OUT_DIR"
         ```
-        If `scripts/pdf2md/.venv/` does not exist yet, bootstrap once: `cd scripts/pdf2md && uv venv && uv pip install -e .`. Do **not** call `Read` on a `.pdf` directly — it renders each page as an image, which is far slower and far more token-expensive than text extraction.
+        If `$ROOT/scripts/pdf2md/.venv/` does not exist yet, bootstrap once: `cd "$ROOT/scripts/pdf2md" && uv venv && uv pip install -e .`. If the PDF is a multi-chapter book, stop and use `/ingest-pdf` instead — it routes books into `sources/books/<slug>/` and runs `/summarize-chapters` over them. Do **not** call `Read` on a `.pdf` directly — it renders each page as an image, which is far slower and far more token-expensive than text extraction.
    b. Determine the best category from those listed in CLAUDE.md (currently: `stpa`, `hitl`, `red`, `ontology`, `manage`, `hardware`, `jobs`, `robots`, `geo`, `commercial`, `finance`, `coding`; or a source-type folder: `books`, `arxiv`, `substack`, `youtube`). Always re-check CLAUDE.md's Categories table — it is the source of truth and may have been personalized. If unclear, ask the user.
    c. Decide: should this be merged into an existing wiki page, or does it warrant a new page?
    d. If **merging**: update the existing wiki page with the new information, add to Key Points or Notes section

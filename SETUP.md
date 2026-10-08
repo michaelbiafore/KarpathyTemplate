@@ -101,11 +101,13 @@ Each `uv venv` creates a `.venv/` directory inside the package; both are
 gitignored. Total disk: ~400 MB across both venvs (mostly PyMuPDF and
 lxml binaries).
 
-After this, the slash commands `/ingest-epub`, `/ingest-inbox`, and
-`/ingest-url` will find the binaries at:
+After this, the slash commands `/ingest-epub`, `/ingest-pdf`,
+`/ingest-inbox`, `/ingest-url`, and `/summarize-chapters` will find the
+binaries at:
 - `scripts/epub2md/.venv/Scripts/epub2md.exe`
 - `scripts/epub2md/.venv/Scripts/epub2md-summarize.exe`
 - `scripts/pdf2md/.venv/Scripts/pdf2md.exe`
+- `scripts/pdf2md/.venv/Scripts/pdf2md-summarize.exe`
 
 (Replace `Scripts/` with `bin/` and drop `.exe` on macOS / Linux.)
 
