@@ -102,8 +102,8 @@ gitignored. Total disk: ~400 MB across both venvs (mostly PyMuPDF and
 lxml binaries).
 
 After this, the slash commands `/ingest-epub`, `/ingest-pdf`,
-`/ingest-inbox`, `/ingest-url`, and `/summarize-chapters` will find the
-binaries at:
+`/ingest-inbox`, `/ingest-url`, `/summarize-chapters`, and `/pdf2cliff`
+will find the binaries at:
 - `scripts/epub2md/.venv/Scripts/epub2md.exe`
 - `scripts/epub2md/.venv/Scripts/epub2md-summarize.exe`
 - `scripts/pdf2md/.venv/Scripts/pdf2md.exe`

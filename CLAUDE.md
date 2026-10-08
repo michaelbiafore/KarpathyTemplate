@@ -12,6 +12,7 @@ This is a personal knowledge base (LLM Wiki) managed by Claude, based on [Andrej
 - `npx defuddle` — non-Substack web articles. Install once: `npm install -g defuddle`.
 - `scripts/epub2md/` (vendored Python package, drives `/ingest-epub`) — EPUB books. One-time bootstrap per machine: `cd scripts/epub2md && uv venv && uv pip install -e .`.
 - `scripts/pdf2md/` (vendored Python package, drives `/ingest-pdf` and the PDF branch of `/ingest-inbox` and `/ingest-url`) — PDF papers/books. Bootstrap: `cd scripts/pdf2md && uv venv && uv pip install -e .`.
+- `scripts/md2cliff_html.py` (PEP 723 self-installing, drives the render step of `/pdf2cliff`) — Markdown + images → one portable HTML file. No bootstrap beyond `uv`.
 - `scripts/fetch_substack.py` (PEP 723 self-installing) — Substack URLs. No bootstrap needed beyond `uv` being installed and a one-time `uv run --with playwright playwright install chromium`.
 
 **Onboarding for new clones.** If you're operating in a fresh clone of this repo and any of `scripts/epub2md/.venv/` or `scripts/pdf2md/.venv/` don't exist, the corresponding ingest path will fail. Bootstrap the missing venv before invoking the slash command, or point the user at `SETUP.md` for the full new-machine setup walkthrough.
@@ -35,6 +36,10 @@ Clippings/        → Default drop folder for Obsidian Web Clipper. Drops are al
 images/           → Vault-wide image store (Obsidian-managed attachments). Source-specific images live with their source (e.g. sources/books/<slug>/images/, sources/substack/<slug>_figs/).
 scripts/          → Vendored ingestion tooling (epub2md/, pdf2md/, fetch_substack.py). Not part of the wiki content. See SETUP.md for one-time bootstrap.
                     Note: scripts/epub2md/.venv/ and scripts/pdf2md/.venv/ are GITIGNORED — bootstrap them on each new machine.
+Refs/             → Reference assets used by commands, not wiki content. Holds
+                    formatted_transcript_style.html, the house style /pdf2cliff renders into.
+cliffs/           → Output folder for /pdf2cliff. One self-contained HTML per source per
+                    target length. Derived artifacts — do not lint, do not index.
 plans/            → Ad-hoc planning docs. NOT part of the wiki — do not lint, do not index, do not ingest.
 cookies_substack.json → (Wiki root, GITIGNORED) Per-user Substack cookies for paywalled-content ingest. See SETUP.md §5.
 CLAUDE.md         → Layer 3: This file — the schema that governs how the wiki operates
@@ -152,6 +157,7 @@ See `sources/books/README.md` and `sources/youtube/README.md` for recommended fo
 | `/ingest-pdf` | `/ingest-pdf <path-to.pdf>` | Converts a local PDF (paper, report, slide deck) to markdown via vendored `pdf2md`, then runs the full ingest. Multi-chapter PDFs (books, theses) route into `sources/books/<slug>/` and get summarized via `/summarize-chapters`. |
 | `/ingest-epub` | `/ingest-epub <path-to.epub>` | Extracts EPUB chapters + images into `sources/books/<slug>/`, then delegates to `/summarize-chapters` and synthesizes per-chapter and book-overview wiki pages. |
 | `/summarize-chapters` | `/summarize-chapters <absolute-md-dir> [--tool pdf\|epub]` | Produces LLM chapter summaries (one Agent subagent each), an LLM book-level summary synthesized from them, and one stitched `Sum_<Title>.md`. Works on `pdf2md` or `epub2md` output. No API key. |
+| `/pdf2cliff` | `/pdf2cliff <target-pages> <path-to.pdf>` | Illustrated, page-budgeted "cliff notes" of a PDF, delivered as one **portable** self-contained HTML file for emailing. Summarizes chapters, synthesizes an overall summary to the page target, renders it in the `Refs/` house style. Figure-heavy by design. Output in `cliffs/`. |
 | `/maintain-wiki` | `/maintain-wiki` | Health-checks the wiki for broken links, orphans, gaps, contradictions. |
 
 ## Available Skills

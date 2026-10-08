@@ -86,7 +86,20 @@ pdf2md-summarize book-plan <absolute-md-dir>
 
 # 3. Stitch the book-level summary + all chapter summaries into one file.
 pdf2md-summarize assemble <absolute-md-dir>
+
+# Group adjacent sections into bundles under a word cap, for a finely
+# chaptered book where one subagent per chapter would be wasteful.
+pdf2md-summarize bundle <absolute-md-dir> --max-words 6000
+
+# List whatever Sum_* files exist, however they were produced.
+pdf2md-summarize summaries <absolute-md-dir>
 ```
+
+`bundle` exists because a 450-page title can split into 150+ TOC entries
+averaging a few hundred words each; bundling cuts that to ~20 subagent calls
+without losing reading order. `summaries` is the bundle-agnostic companion —
+it reports what is on disk rather than deriving expectations from the chapter
+list, which is what a whole-book or cliff-notes synthesis stage needs.
 
 `scan` emits `path`, `filename`, `title`, `word_count`, `target_min`,
 `target_max`, `figure_count`, `summary_path`. `book-plan` emits

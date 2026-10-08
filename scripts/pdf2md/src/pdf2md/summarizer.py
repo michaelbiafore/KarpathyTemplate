@@ -142,21 +142,35 @@ class ChapterSummarizer:
         """Absolute path of the single stitched-together summary file."""
         return self.output_dir / f"Sum_{self.safe_book_title}.md"
 
+    @staticmethod
+    def _numeric_key(pattern: re.Pattern, path: Path) -> tuple[int, str]:
+        """Sort key that orders by the numeric prefix, not lexicographically.
+
+        Chapter numbers are zero-padded to two digits, so a book with 100+
+        chapters mixes widths (`99_`, `100_`) and a plain filename sort puts
+        `100_` before `11_`. That silently scrambles reading order in the
+        bundles and in the assembled summary, so order by the parsed integer.
+        """
+        match = pattern.match(path.name)
+        return (int(match.group(1)) if match else -1, path.name)
+
     def find_chapter_files(self) -> list[Path]:
         """Find numbered chapter files, excluding any summary output."""
         return sorted(
-            p for p in self.md_dir.iterdir()
-            if p.is_file()
-            and CHAPTER_FILENAME_RE.match(p.name)
-            and not p.name.startswith("Sum_")
-            and not p.name.startswith(BOOK_SUMMARY_PREFIX)
+            (p for p in self.md_dir.iterdir()
+             if p.is_file()
+             and CHAPTER_FILENAME_RE.match(p.name)
+             and not p.name.startswith("Sum_")
+             and not p.name.startswith(BOOK_SUMMARY_PREFIX)),
+            key=lambda p: self._numeric_key(CHAPTER_FILENAME_RE, p),
         )
 
     def find_summary_files(self) -> list[Path]:
         """Find the per-chapter summary files written by the chapter subagents."""
         return sorted(
-            p for p in self.output_dir.iterdir()
-            if p.is_file() and SUMMARY_FILENAME_RE.match(p.name)
+            (p for p in self.output_dir.iterdir()
+             if p.is_file() and SUMMARY_FILENAME_RE.match(p.name)),
+            key=lambda p: self._numeric_key(SUMMARY_FILENAME_RE, p),
         )
 
     def summary_path_for(self, chapter_path: Path) -> Path:
@@ -258,6 +272,95 @@ class ChapterSummarizer:
             "concatenated_path": str(self.concatenated_path),
         }
 
+
+    def bundle(self, max_words: int = 5000) -> list[dict]:
+        """Group consecutive content chapters into bundles under a word cap.
+
+        A finely-chaptered book is the normal case, not the exception: a 450-page
+        title can split into 150+ TOC entries averaging a few hundred words. One
+        subagent per entry is both slow and wasteful, so adjacent sections are
+        bundled up to ``max_words`` of input and summarized together. Order is
+        preserved and bundles never straddle a reordering, so the resulting
+        summaries still read front-to-back.
+        """
+        groups: list[list[dict]] = []
+        current: list[dict] = []
+        current_words = 0
+
+        for path, title in self._content_chapters():
+            body = _strip_frontmatter(path.read_text(encoding="utf-8"))
+            words = len(body.split())
+            if current and current_words + words > max_words:
+                groups.append(current)
+                current, current_words = [], 0
+            current.append({
+                "path": str(path),
+                "filename": path.name,
+                "title": title,
+                "word_count": words,
+                "figure_count": _count_figures(body),
+            })
+            current_words += words
+        if current:
+            groups.append(current)
+
+        out = []
+        for group in groups:
+            match = CHAPTER_FILENAME_RE.match(group[0]["filename"])
+            number = match.group(1) if match else "000"
+            if len(group) > 1:
+                label = sanitize_filename(f"{group[0]['title']}_to_{group[-1]['title']}")
+            else:
+                label = sanitize_filename(group[0]["title"])
+            words = sum(c["word_count"] for c in group)
+            target_min = max(50, words // 20)
+            target_max = max(target_min + 50, words // 5)
+            out.append({
+                "bundle_id": number,
+                "chapters": group,
+                "chapter_count": len(group),
+                "titles": [c["title"] for c in group],
+                "word_count": words,
+                "figure_count": sum(c["figure_count"] for c in group),
+                "target_min": target_min,
+                "target_max": target_max,
+                "summary_path": str(self.output_dir / f"Sum_{number}_{label}.md"),
+            })
+        return out
+
+    def summaries(self) -> dict:
+        """List the summary files that actually exist on disk.
+
+        Deliberately bundle-agnostic: it reports what is there rather than
+        deriving expectations from the chapter list, so it works whether the
+        summaries came one-per-chapter or one-per-bundle. This is the input a
+        whole-book or cliff-notes synthesis stage needs.
+        """
+        items = []
+        total = 0
+        for path in self.find_summary_files():
+            body = _strip_frontmatter(path.read_text(encoding="utf-8"))
+            words = len(body.split())
+            total += words
+            items.append({
+                "path": str(path),
+                "filename": path.name,
+                "title": self._chapter_title(self.md_dir / path.name[4:]),
+                "word_count": words,
+                "figure_count": _count_figures(body),
+            })
+        images_dir = self.md_dir / "images"
+        return {
+            "book_title": self.book_title,
+            "md_dir": str(self.md_dir),
+            "images_dir": str(images_dir) if images_dir.is_dir() else None,
+            "summaries": items,
+            "count": len(items),
+            "total_summary_words": total,
+            "book_summary_path": str(self.book_summary_path),
+            "concatenated_path": str(self.concatenated_path),
+        }
+
     def find_book_summary(self) -> Path | None:
         """Locate the book-level summary, if a subagent has written one."""
         exact = self.book_summary_path
@@ -346,6 +449,23 @@ def main(args: list[str] | None = None) -> int:
     plan_p.add_argument("-o", "--output", type=_resolved_dir, default=None,
                         help="Directory holding the Sum_* files (default: md_dir)")
 
+    bun_p = sub.add_parser(
+        "bundle",
+        help="Group consecutive content chapters into bundles under a word cap, "
+             "so a finely-chaptered book needs far fewer subagents",
+    )
+    bun_p.add_argument("md_dir", type=_resolved_dir)
+    bun_p.add_argument("-o", "--output", type=_resolved_dir, default=None)
+    bun_p.add_argument("--max-words", type=int, default=5000,
+                       help="Maximum input words per bundle (default: 5000)")
+
+    sums_p = sub.add_parser(
+        "summaries",
+        help="List the Sum_* files that exist, whatever produced them, as JSON",
+    )
+    sums_p.add_argument("md_dir", type=_resolved_dir)
+    sums_p.add_argument("-o", "--output", type=_resolved_dir, default=None)
+
     asm_p = sub.add_parser(
         "assemble",
         help="Concatenate the book-level summary (if any) and all Sum_<NNN>_*.md files",
@@ -374,6 +494,16 @@ def main(args: list[str] | None = None) -> int:
     if parsed.command == "book-plan":
         summarizer = ChapterSummarizer(parsed.md_dir, parsed.output)
         print(json.dumps(summarizer.book_plan(), indent=2))
+        return 0
+
+    if parsed.command == "bundle":
+        summarizer = ChapterSummarizer(parsed.md_dir, parsed.output)
+        print(json.dumps(summarizer.bundle(parsed.max_words), indent=2))
+        return 0
+
+    if parsed.command == "summaries":
+        summarizer = ChapterSummarizer(parsed.md_dir, parsed.output)
+        print(json.dumps(summarizer.summaries(), indent=2))
         return 0
 
     if parsed.command == "assemble":
