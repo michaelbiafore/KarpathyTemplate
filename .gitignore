@@ -21,6 +21,23 @@ scripts/epub2md/.venv/
 scripts/pdf2md/.venv/
 .venv/
 
+# === Converted book images (regenerable, large) ===
+# pdf2md / epub2md extract one image per figure into sources/books/<slug>/images/.
+# A single illustrated title runs to tens of MB (a 451-page book produced 331
+# files, 51 MB), and they are fully regenerable from the source PDF/EPUB, so
+# they are not worth carrying in git history. The per-chapter markdown and the
+# Sum_*/Book_Summary_* files beside them ARE tracked -- that is the expensive,
+# non-regenerable part (about 1 MB for the same book).
+#
+# Consequence: in a fresh clone, wiki pages that embed
+# ../../sources/books/<slug>/images/<file>.png will show broken images until the
+# source is re-converted. To regenerate:
+#   scripts/pdf2md/.venv/Scripts/pdf2md.exe  <abs.pdf>  -o <abs>/sources/books/<slug>
+#   scripts/epub2md/.venv/Scripts/epub2md.exe <abs.epub> -o <abs>/sources/books/<slug>
+# The /pdf2cliff HTML deliverables in cliffs/ embed their figures as data: URIs,
+# so those stay self-contained regardless.
+sources/books/*/images/
+
 # === Python bytecode / build artifacts ===
 __pycache__/
 *.py[cod]

@@ -34,6 +34,8 @@ Clippings/        → Default drop folder for Obsidian Web Clipper. Drops are al
                     don't try to /ingest-url the source URL inside the clipping. Move/delete after.
                     GITIGNORED — local-only capture zone.
 images/           → Vault-wide image store (Obsidian-managed attachments). Source-specific images live with their source (e.g. sources/books/<slug>/images/, sources/substack/<slug>_figs/).
+                    NOTE: sources/books/*/images/ is GITIGNORED — converted book figures are large and
+                    regenerable. Re-convert the source PDF/EPUB in a fresh clone to restore them.
 scripts/          → Vendored ingestion tooling (epub2md/, pdf2md/, fetch_substack.py). Not part of the wiki content. See SETUP.md for one-time bootstrap.
                     Note: scripts/epub2md/.venv/ and scripts/pdf2md/.venv/ are GITIGNORED — bootstrap them on each new machine.
 Refs/             → Reference assets used by commands, not wiki content. Holds
