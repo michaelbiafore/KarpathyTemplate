@@ -17,7 +17,9 @@ This is a personal knowledge base (LLM Wiki) managed by Claude, based on [Andrej
 
 **Onboarding for new clones.** If you're operating in a fresh clone of this repo and any of `scripts/epub2md/.venv/` or `scripts/pdf2md/.venv/` don't exist, the corresponding ingest path will fail. Bootstrap the missing venv before invoking the slash command, or point the user at `SETUP.md` for the full new-machine setup walkthrough.
 
-**Current state.** The wiki is in **bootstrap state**: `wiki/` contains only `index.md` and `log.md` (both scaffolded, no entries under any category yet); `sources/` is empty. Don't expect existing pages to cross-link against — the index-first lookup will return an empty index until the first ingest lands. On the first ingest, create the relevant `wiki/<category>/` and `sources/<category>/` folders lazily.
+**Current state.** The wiki is in **bootstrap state**: `wiki/` contains only `index.md` and `log.md` (both scaffolded, no entries under any category yet); `sources/` holds nothing but its `README.md`. Don't expect existing pages to cross-link against — the index-first lookup will return an empty index until the first ingest lands. On the first ingest, create the relevant `wiki/<category>/` and `sources/<category>/` folders lazily; `sources/books/` and `cliffs/` likewise do not exist yet and are created on first use.
+
+**Raw captures awaiting ingest (local only).** `inbox/controversies/` and `inbox/corporate/` hold downloaded sources for the two reading-list documents in `inbox/` — archived HTML with sibling `<title>_figs/` folders, plus PDFs. They are **downloads only; none of it has been ingested**, and because `inbox/` is gitignored they won't appear in a fresh clone. `plans/STATUS_Controversy_Ingest.md` and `plans/STATUS_Corporate_Ingest.md` record what was captured and what could not be retrieved.
 
 ## Architecture
 
